@@ -1,15 +1,21 @@
 import os
 import requests
-import psycopg2
-import json
-from datetime import datetime, timedelta
+from datetime import datetime
+from supabase import create_client, Client
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv()  # Carrega variáveis do .env
+
+# =====================================
+# Supabase SDK
+# =====================================
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 # =====================================
-# 1. Autenticação na Amadeus
+# Autenticar Amadeus
 # =====================================
 def autenticar_amadeus():
     url = "https://test.api.amadeus.com/v1/security/oauth2/token"
@@ -18,13 +24,14 @@ def autenticar_amadeus():
         "client_id": os.getenv("AMADEUS_CLIENT_ID"),
         "client_secret": os.getenv("AMADEUS_CLIENT_SECRET"),
     }
-    response = requests.post(url, data=payload)
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    response = requests.post(url, data=payload, headers=headers)
     response.raise_for_status()
     return response.json()["access_token"]
 
 
 # =====================================
-# 2. Buscar voos
+# Buscar voos
 # =====================================
 def buscar_voos(access_token, origem, destino, data_ida, data_volta):
     url = "https://test.api.amadeus.com/v2/shopping/flight-offers"
@@ -38,27 +45,19 @@ def buscar_voos(access_token, origem, destino, data_ida, data_volta):
         "max": 10,
     }
     headers = {"Authorization": f"Bearer {access_token}"}
-    response = requests.get(url, headers=headers, params=params)
-    response.raise_for_status()
-    return response.json()
+    r = requests.get(url, headers=headers, params=params)
+    r.raise_for_status()
+    return r.json()
 
 
 # =====================================
-# 3. Processar resultados
+# Processar resultados
 # =====================================
 def processar_resultados(dados, origem, destino, data_ida, data_volta):
     registros = []
-    if "data" not in dados:
-        return registros
-
-    for oferta in dados["data"]:
+    for oferta in dados.get("data", []):
         preco_total = oferta["price"]["total"]
-        airline = (
-            oferta["validatingAirlineCodes"][0]
-            if "validatingAirlineCodes" in oferta
-            else "N/A"
-        )
-
+        airline = oferta.get("validatingAirlineCodes", ["N/A"])[0]
         registros.append(
             {
                 "origin": origem,
@@ -66,70 +65,52 @@ def processar_resultados(dados, origem, destino, data_ida, data_volta):
                 "departure": data_ida,
                 "return": data_volta,
                 "airline": airline,
-                "amadeus_price_brl": float(preco_total),
-                "query_time": datetime.now().isoformat(),
+                "price_brl": float(preco_total),
                 "raw_data": oferta,
+                "query_time": datetime.now().isoformat(),
             }
         )
     return registros
 
 
 # =====================================
-# 4. Salvar no Supabase (Postgres)
+# Salvar no Supabase
 # =====================================
 def salvar_supabase(registros):
-    db_url = os.getenv("SUPABASE_DB_URL")
-    conn = psycopg2.connect(db_url)
-    cur = conn.cursor()
+    if not registros:
+        print("Nenhum registro para salvar.")
+        return
 
-    for r in registros:
-        cur.execute(
-            """
-            insert into voos (origin, destination, departure, return, airline, price_brl, raw_data, query_time)
-            values (%s, %s, %s, %s, %s, %s, %s, %s)
-        """,
-            (
-                r.get("origin"),
-                r.get("destination"),
-                r.get("departure"),
-                r.get("return"),
-                r.get("airline"),
-                r.get("amadeus_price_brl"),
-                json.dumps(r.get("raw_data")),
-                datetime.now(),
-            ),
-        )
-
-    conn.commit()
-    cur.close()
-    conn.close()
+    # Inserção em lote usando SDK
+    response = supabase.table("voos").insert(registros).execute()
+    if response.get("error"):
+        print("Erro ao salvar no Supabase:", response["error"])
+    else:
+        print(f"{len(registros)} registros salvos no Supabase.")
 
 
 # =====================================
-# 5. Função principal
+# Função principal
 # =====================================
 def comparar_precos():
-    access_token = autenticar_amadeus()
-
-    # Parâmetros fixos do problema
-    origens = ["GRU", "CGH", "VCP"]  # São Paulo e Campinas
-    destino = "NAT"  # Natal
-    data_ida = "2025-10-12"
-    data_volta = "2025-10-18"
+    token = autenticar_amadeus()
+    origens = [o.strip().upper() for o in os.getenv("ORIGENS", "GRU,VCP").split(",")]
+    destino = os.getenv("DESTINO", "NAT")
+    data_ida = os.getenv("DATA_IDA", "2025-10-12")
+    data_volta = os.getenv("DATA_VOLTA", "2025-10-18")
 
     todos_registros = []
     for origem in origens:
-        dados = buscar_voos(access_token, origem, destino, data_ida, data_volta)
+        dados = buscar_voos(token, origem, destino, data_ida, data_volta)
         registros = processar_resultados(dados, origem, destino, data_ida, data_volta)
         todos_registros.extend(registros)
 
     return todos_registros
 
 
+# =====================================
+# Executar
+# =====================================
 if __name__ == "__main__":
     resultados = comparar_precos()
-    if resultados:
-        salvar_supabase(resultados)
-        print(f"{len(resultados)} registros salvos no Supabase.")
-    else:
-        print("Nenhum resultado encontrado.")
+    salvar_supabase(resultados)

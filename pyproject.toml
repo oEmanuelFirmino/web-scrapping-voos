@@ -13,5 +13,6 @@ dependencies = [
     "requests>=2.32.5",
     "schedule>=1.2.2",
     "selenium>=4.35.0",
+    "supabase>=2.18.1",
     "webdriver-manager>=4.0.2",
 ]
