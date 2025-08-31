@@ -88,7 +88,6 @@ def salvar_supabase(registros):
         print("Erro ao salvar no Supabase:", e)
 
 
-
 # =====================================
 # Função principal
 # =====================================
