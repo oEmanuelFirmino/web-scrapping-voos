@@ -81,16 +81,12 @@ def salvar_supabase(registros):
         print("Nenhum registro para salvar.")
         return
 
-    # Inserção em lote usando SDK
     try:
         response = supabase.table("voos").insert(registros).execute()
-    except Exception as e:
-        print("Erro inesperado:", e)
-        
-    if response.error:
-        print("Erro ao salvar no Supabase:", response.error)
-    else:
         print(f"{len(response.data)} registros salvos no Supabase.")
+    except Exception as e:
+        print("Erro ao salvar no Supabase:", e)
+
 
 
 # =====================================
