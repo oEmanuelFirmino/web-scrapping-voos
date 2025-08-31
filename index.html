@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Voos — Visão por Companhia e Dia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0b0f14; /* dark */
+        --card: #111827; /* slate-900 */
+        --muted: #94a3b8; /* slate-400 */
+        --text: #e5e7eb; /* gray-200 */
+        --brand: #22d3ee; /* cyan-400 */
+        --accent: #06b6d4; /* cyan-500 */
+        --border: #1f2937; /* gray-800 */
+        --ok: #10b981; /* emerald-500 */
+        --warn: #f59e0b; /* amber-500 */
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu,
+          "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        background: radial-gradient(
+            1200px 600px at 10% -10%,
+            rgba(34, 211, 238, 0.08),
+            transparent 60%
+          ),
+          radial-gradient(
+            900px 500px at 100% 0%,
+            rgba(6, 182, 212, 0.08),
+            transparent 60%
+          ),
+          var(--bg);
+        color: var(--text);
+        line-height: 1.45;
+      }
+      header {
+        padding: 28px 20px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        backdrop-filter: blur(6px);
+        background: linear-gradient(
+          180deg,
+          rgba(11, 15, 20, 0.9) 0%,
+          rgba(11, 15, 20, 0.6) 70%,
+          rgba(11, 15, 20, 0) 100%
+        );
+        border-bottom: 1px solid var(--border);
+      }
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .controls {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr auto;
+        gap: 10px;
+        align-items: center;
+      }
+      .input,
+      .select,
+      .btn {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text);
+      }
+      .btn {
+        cursor: pointer;
+        font-weight: 600;
+        transition: transform 0.06s ease, box-shadow 0.2s ease;
+      }
+      .btn:hover {
+        box-shadow: 0 10px 25px rgba(34, 211, 238, 0.08);
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(34, 211, 238, 0.08);
+        color: var(--brand);
+        border: 1px solid rgba(34, 211, 238, 0.25);
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+      }
+
+      .section {
+        margin: 22px 0 28px;
+      }
+      .day-card {
+        border: 1px solid var(--border);
+        background: rgba(17, 24, 39, 0.7);
+        border-radius: 16px;
+        overflow: hidden;
+      }
+      .day-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.02),
+          rgba(255, 255, 255, 0)
+        );
+      }
+      .day-title {
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .airline-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 14px;
+        padding: 16px;
+      }
+
+      .table-card {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+        background: rgba(3, 7, 18, 0.5);
+      }
+      .table-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(2, 6, 23, 0.6);
+      }
+      .airline-title {
+        font-weight: 700;
+        font-size: 14px;
+      }
+      .table-wrap {
+        width: 100%;
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+      }
+      th {
+        text-align: left;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      td {
+        font-size: 13px;
+      }
+      .price {
+        font-weight: 700;
+      }
+
+      .empty {
+        padding: 16px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      footer {
+        color: var(--muted);
+        font-size: 12px;
+        padding: 26px 20px;
+        border-top: 1px solid var(--border);
+        margin-top: 28px;
+      }
+      .pill {
+        padding: 4px 8px;
+        background: rgba(148, 163, 184, 0.15);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        font-size: 11px;
+      }
+
+      @media (min-width: 900px) {
+        .airline-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap">
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+          "
+        >
+          <h1>Radar de Voos</h1>
+          <div>
+            <span class="badge" title="Refresh para forçar nova consulta"
+            >Dashboard client-side (Supabase)</span
+            >
+            <span class="badge" style="background-color: aquamarine; opacity: 50%; color: #0b0f14;" title="Refresh para forçar nova consulta"
+            >Dados retirados do Google Flights</span
+            >
+          </div>
+        </div>
+        <div class="sub">
+          <strong>Time-to-insight</strong>: leitura do
+          Supabase, separação por <em>dia da query</em> e por
+          <em>companhia</em>, ordenado por preço.
+        </div>
+        <div class="controls">
+          <input
+            id="originFilter"
+            class="input"
+            placeholder="Filtrar origem (ex.: GRU)"
+          />
+          <input
+            id="destFilter"
+            class="input"
+            placeholder="Filtrar destino (ex.: NAT)"
+          />
+          <select id="daySelect" class="select">
+            <option value="">Todos os dias</option>
+          </select>
+          <button id="reloadBtn" class="btn">Reprocessar</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section id="content" class="section"></section>
+      <div id="emptyState" class="empty" style="display: none">
+        Sem dados para os filtros atuais.
+      </div>
+    </main>
+    <footer class="wrap">
+      Dados via API do Supabase • Desenvolvido por
+      <a
+        href="https://github.com/oEmanuelFirmino"
+        target="_blank"
+        rel="noopener"
+        >Emanuel Firmino</a
+      
+      • <span class="pill">2025</span>
+    <!-- Supabase JS v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      // =============================
+      // 1) CONFIG — Preencha com seu projeto
+      // =============================
+      const SUPABASE_URL =
+        window.SUPABASE_URL || "https://wgxvjfhfohypcyyyidkz.supabase.co"; // TODO: trocar
+      const SUPABASE_ANON_KEY =
+        window.SUPABASE_ANON_KEY ||
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndneHZqZmhmb2h5cGN5eXlpZGt6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1MDM0MTcsImV4cCI6MjA3MjA3OTQxN30.IJ1ivAdoW4Apnv_7vlz-G-_k4BISHbn_8WNEkoL9uVM"; // TODO: trocar
+
+      const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      // =============================
+      // 2) Utilitários
+      // =============================
+      const BRL = new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      });
+
+      // Map fallback para códigos IATA -> nomes
+      const AIRLINE_CODE_MAP = {
+        LA: "LATAM Airlines Brasil",
+        G3: "GOL Linhas Aéreas",
+        AD: "Azul Linhas Aéreas",
+        TP: "TAP Air Portugal",
+        JJ: "LATAM (antigo TAM)",
+        AF: "Air France",
+        IB: "Iberia",
+        UA: "United Airlines",
+        AA: "American Airlines",
+        CM: "Copa Airlines",
+        AV: "Avianca",
+      };
+
+      function toISODateOnly(ts) {
+        const d = new Date(ts);
+        // Ajuste para manter data local na renderização
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      }
+
+      function safeGet(obj, path, fallback = undefined) {
+        try {
+          return (
+            path
+              .split(".")
+              .reduce(
+                (acc, k) => (acc && acc[k] !== undefined ? acc[k] : undefined),
+                obj
+              ) ?? fallback
+          );
+        } catch (_) {
+          return fallback;
+        }
+      }
+
+      function resolveAirlineName(row) {
+        const raw = row.raw_data || {};
+        // 1) Preferir nome explícito nos segmentos
+        const segs0 = safeGet(raw, "itineraries.0.segments", []);
+        for (const seg of segs0) {
+          const name = safeGet(seg, "operating.carrierName");
+          if (name) return name;
+        }
+        // 2) Fallback: validar pelo codigo
+        const code =
+          row.airline || safeGet(raw, "validatingAirlineCodes.0", null);
+        if (code && AIRLINE_CODE_MAP[code]) return AIRLINE_CODE_MAP[code];
+        if (code) return code; // último recurso
+        return "Companhia desconhecida";
+      }
+
+      function resolvePriceBRL(row) {
+        const a = row.price_brl;
+        if (typeof a === "number" && !Number.isNaN(a)) return a;
+        const t = parseFloat(safeGet(row, "raw_data.price.total"));
+        if (!Number.isNaN(t)) return t;
+        return null;
+      }
+
+      function byPriceAsc(a, b) {
+        const pa = resolvePriceBRL(a) ?? Number.POSITIVE_INFINITY;
+        const pb = resolvePriceBRL(b) ?? Number.POSITIVE_INFINITY;
+        return pa - pb;
+      }
+
+      // =============================
+      // 3) Query + Transformação (group by dia -> companhia)
+      // =============================
+      async function fetchVoos({ origin, destination, day }) {
+        let query = client
+          .from("voos")
+          .select(
+            "id, origin, destination, departure, return, airline, price_brl, raw_data, query_time"
+          )
+          .order("query_time", { ascending: false });
+
+        if (origin) query = query.ilike("origin", origin.trim());
+        if (destination) query = query.ilike("destination", destination.trim());
+        if (day) {
+          // Filtra pelo dia da query (UTC): usamos range [day, day+1)
+          const start = new Date(day + "T00:00:00");
+          const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+          query = query
+            .gte("query_time", start.toISOString())
+            .lt("query_time", end.toISOString());
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        return data || [];
+      }
+
+      function groupByDayAndAirline(rows) {
+        const byDay = new Map();
+        for (const r of rows) {
+          const day = toISODateOnly(r.query_time);
+          const airline = resolveAirlineName(r);
+          if (!byDay.has(day)) byDay.set(day, new Map());
+          const byAirline = byDay.get(day);
+          if (!byAirline.has(airline)) byAirline.set(airline, []);
+          byAirline.get(airline).push(r);
+        }
+        // Ordenar por preço dentro de cada companhia
+        for (const [, byAirline] of byDay) {
+          for (const [air, arr] of byAirline) {
+            arr.sort(byPriceAsc);
+            byAirline.set(air, arr);
+          }
+        }
+        return byDay; // Map<day, Map<airline, rows[]>>
+      }
+
+      // =============================
+      // 4) Render
+      // =============================
+      function render(rows) {
+        const content = document.getElementById("content");
+        const empty = document.getElementById("emptyState");
+        content.innerHTML = "";
+
+        if (!rows.length) {
+          empty.style.display = "block";
+          return;
+        }
+        empty.style.display = "none";
+
+        const grouped = groupByDayAndAirline(rows);
+        // Popular seletor de dias
+        const daySelect = document.getElementById("daySelect");
+        const currentDays = new Set(Array.from(grouped.keys()));
+        const existing = new Set(
+          Array.from(daySelect.options).map((o) => o.value)
+        );
+        // Reset mantendo a primeira opção
+        daySelect.innerHTML = '<option value="">Todos os dias</option>';
+        Array.from(currentDays)
+          .sort((a, b) => (a < b ? 1 : -1))
+          .forEach((d) => {
+            const opt = document.createElement("option");
+            opt.value = d;
+            opt.textContent = d;
+            daySelect.appendChild(opt);
+          });
+
+        // Render cards por dia
+        Array.from(grouped.keys())
+          .sort((a, b) => (a < b ? 1 : -1))
+          .forEach((day) => {
+            const byAirline = grouped.get(day);
+            const section = document.createElement("div");
+            section.className = "day-card";
+            section.innerHTML = `
+          <div class="day-head">
+            <div class="day-title">Dia da Query: ${day}</div>
+            <div class="meta">${
+              Array.from(byAirline.keys()).length
+            } companhias • ${Array.from(byAirline.values()).reduce(
+              (acc, v) => acc + v.length,
+              0
+            )} ofertas</div>
+          </div>
+          <div class="airline-grid"></div>
+        `;
+
+            const grid = section.querySelector(".airline-grid");
+            Array.from(byAirline.keys())
+              .sort()
+              .forEach((air) => {
+                const rows = byAirline.get(air);
+                const card = document.createElement("div");
+                card.className = "table-card";
+                card.innerHTML = `
+            <div class="table-head">
+              <div class="airline-title">${air}</div>
+              <div class="meta">${rows.length} ofertas</div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Origem</th>
+                    <th>Destino</th>
+                    <th>Ida</th>
+                    <th>Volta</th>
+                    <th>Preço</th>
+                    <th>Paradas (ida)</th>
+                    <th>Duração (ida)</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          `;
+                const tbody = card.querySelector("tbody");
+
+                for (const r of rows) {
+                  const price = resolvePriceBRL(r);
+                  const it0 = safeGet(r, "raw_data.itineraries.0", {});
+                  const segs0 = it0.segments || [];
+                  const stops = Math.max(
+                    0,
+                    segs0.length
+                      ? segs0[0].numberOfStops ?? segs0.length - 1
+                      : 0
+                  );
+                  const dur = safeGet(it0, "duration", "")
+                    .replace("PT", "")
+                    .toLowerCase();
+
+                  const tr = document.createElement("tr");
+                  tr.innerHTML = `
+              <td>${r.origin}</td>
+              <td>${r.destination}</td>
+              <td title="${r.departure}">${r.departure}</td>
+              <td title="${r.return}">${r.return}</td>
+              <td class="price">${price != null ? BRL.format(price) : "—"}</td>
+              <td>${stops}</td>
+              <td>${dur || "—"}</td>
+            `;
+                  tbody.appendChild(tr);
+                }
+
+                grid.appendChild(card);
+              });
+
+            content.appendChild(section);
+          });
+      }
+
+      // =============================
+      // 5) Orquestração – filtros & load
+      // =============================
+      async function reload() {
+        const origin =
+          document.getElementById("originFilter").value || undefined;
+        const destination =
+          document.getElementById("destFilter").value || undefined;
+        const day = document.getElementById("daySelect").value || undefined;
+
+        const content = document.getElementById("content");
+        content.innerHTML = '<div class="empty">Carregando…</div>';
+
+        try {
+          const rows = await fetchVoos({ origin, destination, day });
+          render(rows);
+        } catch (e) {
+          console.error(e);
+          document.getElementById("emptyState").style.display = "block";
+          document.getElementById("emptyState").textContent =
+            "Falha ao carregar dados: " + (e?.message || e);
+        }
+      }
+
+      document.getElementById("reloadBtn").addEventListener("click", reload);
+
+      // Auto-load na primeira pinta
+      reload();
+    </script>
+  </body>
+</html>
