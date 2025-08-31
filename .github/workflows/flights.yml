@@ -2,8 +2,14 @@ name: Flight Price Checker
 
 on:
   schedule:
-    # Rodar todos os dias às 9h e 21h UTC
-    - cron: "0 9,21 * * *"
+    # Rodar todos os dias às 23:22 UTC
+    - cron: "22 23 * * *"
+    # Rodar todos os dias às 03:33 UTC
+    - cron: "33 3 * * *"
+    # Rodar todos os dias às 08:16 UTC
+    - cron: "16 8 * * *"
+    # Rodar todos os dias às 14:19 UTC
+    - cron: "19 14 * * *"
   workflow_dispatch:
 
 jobs:
