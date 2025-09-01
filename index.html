@@ -84,6 +84,15 @@
         font-size: 1em;
       }
 
+      h5.sub-slot {
+        margin: 8px 0 12px 0;
+        font-size: 0.85em;
+        font-weight: 500;
+        color: #b39ddb;
+        padding-left: 6px;
+        border-left: 3px solid #6d4c41;
+      }
+
       /* ===== Tabelas ===== */
       table {
         width: 100%;
@@ -152,16 +161,26 @@
       import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
       const SUPABASE_URL = "https://wgxvjfhfohypcyyyidkz.supabase.co"; // TODO: trocar
-      const SUPABASE_ANON_KEY =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndneHZqZmhmb2h5cGN5eXlpZGt6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1MDM0MTcsImV4cCI6MjA3MjA3OTQxN30.IJ1ivAdoW4Apnv_7vlz-G-_k4BISHbn_8WNEkoL9uVM"; // TODO: trocar
+      const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndneHZqZmhmb2h5cGN5eXlpZGt6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NjUwMzQxNywiZXhwIjoyMDcyMDc5NDE3fQ.wbLhw8cLrvqhEUU4MdDRYNkRTSXplBBu5Gkqx-813DM"; // TODO: trocar
       const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
       function getTimeSlot(queryTime) {
         const hour = new Date(queryTime).getHours();
-        if (hour >= 0 && hour < 6) return "Madrugada";
+        if (hour >= 0 && hour < 6) {
+          if (hour < 2) return "Madrugada_00_02";
+          if (hour < 4) return "Madrugada_02_04";
+          return "Madrugada_04_06";
+        }
         if (hour >= 6 && hour < 12) return "Dia";
         if (hour >= 12 && hour < 18) return "Tarde";
         return "Noite";
+      }
+
+      function slotLabel(slot) {
+        if (slot === "Madrugada_00_02") return "Madrugada (00h–02h)";
+        if (slot === "Madrugada_02_04") return "Madrugada (02h–04h)";
+        if (slot === "Madrugada_04_06") return "Madrugada (04h–06h)";
+        return slot;
       }
 
       async function fetchVoos() {
@@ -235,12 +254,21 @@
           if (index === 0) contentDiv.classList.add("active");
 
           const slots = grouped[day];
-          for (const slot of ["Madrugada", "Dia", "Tarde", "Noite"]) {
-            if (!slots[slot]) continue;
+          for (const slot of Object.keys(slots).sort()) {
             const slotHeader = document.createElement("h3");
-            slotHeader.textContent = slot;
-            slotHeader.classList.add("slot-badge", slot);
+            slotHeader.textContent = slotLabel(slot).split(" ")[0];
+            slotHeader.classList.add(
+              "slot-badge",
+              slot.includes("Madrugada") ? "Madrugada" : slot
+            );
             contentDiv.appendChild(slotHeader);
+
+            if (slot.includes("Madrugada")) {
+              const subHeader = document.createElement("h5");
+              subHeader.textContent = slotLabel(slot);
+              subHeader.classList.add("sub-slot");
+              contentDiv.appendChild(subHeader);
+            }
 
             const airlines = slots[slot];
             for (const airline of Object.keys(airlines).sort()) {
@@ -255,29 +283,29 @@
               const table = document.createElement("table");
               const thead = document.createElement("thead");
               thead.innerHTML = `
-            <tr>
-              <th>Origem</th>
-              <th>Destino</th>
-              <th>Partida</th>
-              <th>Retorno</th>
-              <th>Preço (BRL)</th>
-              <th>Hora da Query</th>
-            </tr>`;
+                <tr>
+                  <th>Origem</th>
+                  <th>Destino</th>
+                  <th>Partida</th>
+                  <th>Retorno</th>
+                  <th>Preço (BRL)</th>
+                  <th>Hora da Query</th>
+                </tr>`;
               table.appendChild(thead);
 
               const tbody = document.createElement("tbody");
               flights.forEach((f, idx) => {
                 const row = document.createElement("tr");
                 row.innerHTML = `
-              <td>${f.origin}</td>
-              <td>${f.destination}</td>
-              <td>${f.departure}</td>
-              <td>${f.return}</td>
-              <td class="${idx === 0 ? "price-low" : ""}">${f.price_brl.toFixed(
-                  2
-                )}</td>
-              <td>${new Date(f.query_time).toLocaleString("pt-BR")}</td>
-            `;
+                  <td>${f.origin}</td>
+                  <td>${f.destination}</td>
+                  <td>${f.departure}</td>
+                  <td>${f.return}</td>
+                  <td class="${
+                    idx === 0 ? "price-low" : ""
+                  }">${f.price_brl.toFixed(2)}</td>
+                  <td>${new Date(f.query_time).toLocaleString("pt-BR")}</td>
+                `;
                 tbody.appendChild(row);
               });
               table.appendChild(tbody);

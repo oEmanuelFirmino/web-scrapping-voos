@@ -1,4 +1,6 @@
 import os
+from typing import Any, Dict, List
+import pandas as pd
 import requests
 from datetime import datetime
 from supabase import create_client, Client
@@ -43,6 +45,7 @@ def buscar_voos(access_token, origem, destino, data_ida, data_volta):
         "adults": 1,
         "currencyCode": "BRL",
         "max": 10,
+        "includedAirlineCodes": "AD,G3,LA",
     }
     headers = {"Authorization": f"Bearer {access_token}"}
     r = requests.get(url, headers=headers, params=params)
@@ -88,6 +91,21 @@ def salvar_supabase(registros):
         print("Erro ao salvar no Supabase:", e)
 
 
+def salvar_csv(resultados: List[Dict[str, Any]], caminho: str = "resultados.csv"):
+    """
+    Salva os resultados em um CSV local.
+    Se já existir, faz append sem sobrescrever cabeçalho.
+    """
+    df = pd.DataFrame(resultados)
+
+    if not os.path.isfile(caminho):
+        df.to_csv(caminho, index=False, mode="w", encoding="utf-8")
+    else:
+        df.to_csv(caminho, index=False, mode="a", encoding="utf-8", header=False)
+
+    print(f"Resultados salvos em {caminho} ({len(resultados)} linhas).")
+
+
 # =====================================
 # Função principal
 # =====================================
@@ -113,3 +131,4 @@ def comparar_precos():
 if __name__ == "__main__":
     resultados = comparar_precos()
     salvar_supabase(resultados)
+    salvar_csv(resultados)
